@@ -75,12 +75,25 @@ jobs:
         echo "New version is $new_version"
         echo "version=$new_version" >> $GITHUB_ENV
 
+    # Verifica se a tag já existe
+    - name: Check if tag exists
+      id: check_tag
+      run: |
+        if git tag | grep -q "${{ env.version }}"; then
+          echo "Tag ${{ env.version }} already exists."
+          echo "tag_exists=true" >> $GITHUB_ENV
+        else
+          echo "Tag ${{ env.version }} does not exist."
+          echo "tag_exists=false" >> $GITHUB_ENV
+        fi
+
     # Cria um arquivo ZIP da pasta lambda_functions
     - name: Zip lambda_functions folder
       run: zip -r lambda_functions_${{ env.version }}.zip lambda_functions
 
-    # Cria o release no GitHub com os commits na descrição
+    # Cria o release no GitHub com os commits na descrição, se a tag não existir
     - name: Create GitHub release
+      if: ${{ env.tag_exists == 'false' }}
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,6 +109,7 @@ jobs:
 
     # Sobe o pacote de artefatos no release
     - name: Upload Release Asset
+      if: ${{ env.tag_exists == 'false' }}
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
