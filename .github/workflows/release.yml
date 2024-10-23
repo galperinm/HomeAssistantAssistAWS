@@ -1,11 +1,15 @@
 name: Auto Release on Commit
 
+permissions:
+  contents: write  # Permissões para acessar e modificar conteúdo do repositório
+  actions: read    # Permissões para executar ações
+
 on:
   push:
     branches:
       - main
     paths:
-      - 'lambda_functions/**'
+      - 'lambda_functions/**'  # Só dispara se houver mudanças nessa pasta
 
 jobs:
   create-release:
@@ -13,67 +17,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Checkout do código do repositório
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    # Verifica se houve mudanças dentro de lambda_functions
     - name: Check changes in lambda_functions
       id: changes
       run: |
-        if [ $(git rev-list --count HEAD) -le 1 ]; then
-          echo "::set-output name=has_changes::false"
+        if git diff --name-only HEAD~1 HEAD | grep '^lambda_functions/'; then
+          echo "has_changes=true" >> $GITHUB_ENV
         else
-          if git diff --name-only HEAD~1 HEAD | grep '^lambda_functions/'; then
-            echo "::set-output name=has_changes::true"
-          else
-            echo "::set-output name=has_changes::false"
-          fi
+          echo "has_changes=false" >> $GITHUB_ENV
         fi
 
+    # Condicional: Segue o fluxo apenas se houver mudanças na pasta
     - name: Exit if no changes in lambda_functions
-      if: ${{ steps.changes.outputs.has_changes == 'false' }}
+      if: ${{ env.has_changes == 'false' }}
       run: exit 0
 
+    # Instala as dependências da pasta lambda_functions
     - name: Install dependencies
       working-directory: ./lambda_functions
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt -t .
 
-    # Identifica a última tag ou define uma padrão
+    # Identifica a última tag
     - name: Get the latest tag
       id: last_tag
-      run: |
-        latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo 'lambda_functions_v0.1')
-        echo "latest_tag=${latest_tag}" >> $GITHUB_ENV  # Define a tag no ambiente
-        echo "::set-output name=tag::${latest_tag}"
+      run: echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')" >> $GITHUB_ENV
 
     # Obtém os commits feitos desde a última tag
     - name: Get commits since last tag
       id: commit_log
       run: |
-        if [ "${{ env.latest_tag }}" = "lambda_functions_v0.1" ]; then
-          echo "No commits since last tag."
-          echo "::set-output name=commits::No new commits."
+        if [ "${{ env.tag }}" = "lambda_functions_v0.1" ]; then
+          echo "No commits since last tag." > commits.txt
         else
-          git log ${{ env.latest_tag }}..HEAD --pretty=format:"%h - %s" > commits.txt
-          echo "::set-output name=commits::$(cat commits.txt)"
+          git log ${{ env.tag }}..HEAD --pretty=format:"%h - %s" > commits.txt
         fi
+        echo "commits=$(cat commits.txt)" >> $GITHUB_ENV
 
     # Define a versão para o release
     - name: Set release version
       id: get_version
       run: |
-        latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo 'lambda_functions_v0.1')
+        latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')
         if [ "$latest_tag" = "lambda_functions_v0.1" ]; then
-          new_version="v0.1"
+          new_version="lambda_functions_v0.1"
         else
           version=$(echo $latest_tag | sed 's/lambda_functions_v//')
           IFS='.' read -r major minor patch <<< "$version"
           minor=$((minor + 1))
-          new_version="v${major}.${minor}"
+          new_version="lambda_functions_v${minor}"
         fi
-        echo "New version is lambda_functions_${new_version}"
-        echo "version=lambda_functions_${new_version}" >> $GITHUB_ENV  # Define a variável corretamente
+        echo "New version is $new_version"
+        echo "version=$new_version" >> $GITHUB_ENV
 
     # Cria um arquivo ZIP da pasta lambda_functions
     - name: Zip lambda_functions folder
@@ -85,19 +85,18 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.version }}  # Use a nova versão
+        tag_name: ${{ env.version }}
         release_name: Release ${{ env.version }}
         body: |
-          Release for lambda_functions_${{ env.version }}.
+          Release for ${{ env.version }}.
           Last commits:
-          ${{ steps.commit_log.outputs.commits }}
+          ${{ env.commits }}
         draft: false
         prerelease: false
-        overwrite: true  # Permite sobrescrever o release se a tag já existir
 
     # Sobe o pacote de artefatos no release
     - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
+      uses: actions/upload-release-asset@v1.1.0
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: lambda_functions_${{ env.version }}.zip
