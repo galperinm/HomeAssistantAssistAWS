@@ -24,10 +24,14 @@ jobs:
     - name: Check changes in lambda_functions
       id: changes
       run: |
-        if git diff --name-only HEAD~1 HEAD | grep '^lambda_functions/'; then
-          echo "::set-output name=has_changes::true"
+        if [ $(git rev-list --count HEAD) -le 1 ]; then
+          echo "::set-output name=has_changes::false"  # Não há mudanças se não houver commits
         else
-          echo "::set-output name=has_changes::false"
+          if git diff --name-only HEAD~1 HEAD | grep '^lambda_functions/'; then
+            echo "::set-output name=has_changes::true"
+          else
+            echo "::set-output name=has_changes::false"
+          fi
         fi
 
     # Condicional: Segue o fluxo apenas se houver mudanças na pasta
@@ -86,7 +90,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.version }}  # Utilize env.version
+        tag_name: ${{ env.version }}  # Use a nova versão
         release_name: Release ${{ env.version }}
         body: |
           Release for lambda_functions_${{ env.version }}.
@@ -94,6 +98,7 @@ jobs:
           ${{ env.commits }}
         draft: false
         prerelease: false
+        overwrite: true  # Permite sobrescrever o release se a tag já existir
 
     # Sobe o pacote de artefatos no release
     - name: Upload Release Asset
