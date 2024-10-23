@@ -81,7 +81,7 @@ jobs:
 
     # Cria o release no GitHub com os commits na descrição
     - name: Create GitHub release
-      uses: actions/create-release@v1.1.0
+      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -96,7 +96,7 @@ jobs:
 
     # Sobe o pacote de artefatos no release
     - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1.1.0
+      uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: lambda_functions_${{ env.version }}.zip
