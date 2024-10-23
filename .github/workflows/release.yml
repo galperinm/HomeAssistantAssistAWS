@@ -74,7 +74,7 @@ jobs:
           new_version="v0.${minor}"
         fi
         echo "New version is lambda_functions_${new_version}"
-        echo "version=lambda_functions_${new_version}" >> $GITHUB_ENV
+        echo "version=lambda_functions_${new_version}" >> $GITHUB_ENV  # Define a variável corretamente
 
     # Cria um arquivo ZIP da pasta lambda_functions
     - name: Zip lambda_functions folder
@@ -86,12 +86,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.get_version.outputs.version }}
-        release_name: Release ${{ steps.get_version.outputs.version }}
+        tag_name: ${{ env.version }}  # Utilize env.version
+        release_name: Release ${{ env.version }}
         body: |
-          Release for lambda_functions_${{ steps.get_version.outputs.version }}.
+          Release for lambda_functions_${{ env.version }}.
           Last commits:
-          ${{ steps.commit_log.outputs.commits }}
+          ${{ env.commits }}
         draft: false
         prerelease: false
 
