@@ -1,4 +1,17 @@
-# Release v0.2
+# Changes in this release
+
+## New Features
+- Inclusion of keywords for skill closing
+
+## Fixes
+- Correction of handling in Home Assistant API return
+
+## Notes
+- Other minor fixes
+
+---
+
+# Alterações dessa release
 
 ## Novas Funcionalidades
 - Inclusão de palavras chaves para encerramento da skill
