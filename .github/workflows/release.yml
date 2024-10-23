@@ -1,0 +1,100 @@
+name: Auto Release on Commit
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'lambda_functions/**'  # Só dispara se houver mudanças nessa pasta
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout do código do repositório
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Verifica se houve mudanças dentro de lambda_functions
+    - name: Check changes in lambda_functions
+      id: changes
+      run: |
+        if git diff --name-only HEAD~1 HEAD | grep '^lambda_functions/'; then
+          echo "::set-output name=has_changes::true"
+        else
+          echo "::set-output name=has_changes::false"
+        fi
+
+    # Condicional: Segue o fluxo apenas se houver mudanças na pasta
+    - name: Exit if no changes in lambda_functions
+      if: ${{ steps.changes.outputs.has_changes == 'false' }}
+      run: exit 0
+
+    # Instala as dependências da pasta lambda_functions
+    - name: Install dependencies
+      working-directory: ./lambda_functions
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt -t .
+
+    # Identifica a última tag
+    - name: Get the latest tag
+      id: last_tag
+      run: echo "::set-output name=tag::$(git describe --tags --abbrev=0 || echo 'v0.0')"
+
+    # Obtém os commits feitos desde a última tag
+    - name: Get commits since last tag
+      id: commit_log
+      run: |
+        git log ${{ steps.last_tag.outputs.tag }}..HEAD --pretty=format:"%h - %s" > commits.txt
+        echo "::set-output name=commits::$(cat commits.txt)"
+
+    # Define a versão para o release
+    - name: Set release version
+      id: get_version
+      run: |
+        latest_tag=$(git describe --tags `git rev-list --tags --max-count=1` || echo 'v0.0')
+        if [ "$latest_tag" = "v0.0" ]; then
+          new_version="v0.1"
+        else
+          version=$(echo $latest_tag | sed 's/v//')
+          IFS='.' read -r major minor patch <<< "$version"
+          minor=$((minor + 1))
+          new_version="v0.${minor}"
+        fi
+        echo "New version is lambda_functions_${new_version}"
+        echo "::set-output name=version::lambda_functions_${new_version}"
+
+    # Cria um arquivo ZIP da pasta lambda_functions
+    - name: Zip lambda_functions folder
+      run: zip -r lambda_functions_${{ steps.get_version.outputs.version }}.zip lambda_functions
+
+    # Cria o release no GitHub com os commits na descrição
+    - name: Create GitHub release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        release_name: Release ${{ steps.get_version.outputs.version }}
+        body: |
+          Release for lambda_functions_${{ steps.get_version.outputs.version }}.
+          Last commits:
+          ${{ steps.commit_log.outputs.commits }}
+        draft: false
+        prerelease: false
+
+    # Sobe o pacote de artefatos no release
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: lambda_functions_${{ steps.get_version.outputs.version }}.zip
+        asset_name: lambda_functions_${{ steps.get_version.outputs.version }}.zip
+        asset_content_type: application/zip
+
+    # Remove o arquivo .zip local após o release
+    - name: Clean up
+      run: rm lambda_functions_${{ steps.get_version.outputs.version }}.zip
