@@ -11,6 +11,9 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      deployments: write
 
     steps:
     # Checkout do código do repositório
@@ -42,35 +45,36 @@ jobs:
     # Identifica a última tag
     - name: Get the latest tag
       id: last_tag
-      run: echo "::set-output name=tag::$(git describe --tags `git rev-list --tags --max-count=1` || echo 'lambda_functions_v0.1')"
+      run: |
+        echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')" >> $GITHUB_ENV
 
     # Obtém os commits feitos desde a última tag
     - name: Get commits since last tag
       id: commit_log
       run: |
-        if [ "${{ steps.last_tag.outputs.tag }}" = "lambda_functions_v0.1" ]; then
+        if [ "${{ env.tag }}" = "lambda_functions_v0.1" ]; then
           echo "No commits since last tag."
-          echo "::set-output name=commits::No new commits."
+          echo "commits=No new commits." >> $GITHUB_ENV
         else
-          git log ${{ steps.last_tag.outputs.tag }}..HEAD --pretty=format:"%h - %s" > commits.txt
-          echo "::set-output name=commits::$(cat commits.txt)"
+          git log "${{ env.tag }}..HEAD" --pretty=format:"%h - %s" > commits.txt
+          echo "commits=$(cat commits.txt)" >> $GITHUB_ENV
         fi
 
     # Define a versão para o release
     - name: Set release version
       id: get_version
       run: |
-        latest_tag=$(git describe --tags `git rev-list --tags --max-count=1` || echo 'v0.0')
-        if [ "$latest_tag" = "v0.0" ]; then
+        latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')
+        if [ "$latest_tag" = "lambda_functions_v0.1" ]; then
           new_version="v0.1"
         else
-          version=$(echo $latest_tag | sed 's/v//')
+          version=$(echo $latest_tag | sed 's/lambda_functions_v//')
           IFS='.' read -r major minor patch <<< "$version"
           minor=$((minor + 1))
           new_version="v0.${minor}"
         fi
         echo "New version is lambda_functions_${new_version}"
-        echo "::set-output name=version::lambda_functions_${new_version}"
+        echo "version=lambda_functions_${new_version}" >> $GITHUB_ENV
 
     # Cria um arquivo ZIP da pasta lambda_functions
     - name: Zip lambda_functions folder
@@ -78,7 +82,7 @@ jobs:
 
     # Cria o release no GitHub com os commits na descrição
     - name: Create GitHub release
-      uses: actions/create-release@v1
+      uses: actions/create-release@v1.1.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
