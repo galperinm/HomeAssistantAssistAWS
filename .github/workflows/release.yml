@@ -78,8 +78,11 @@ jobs:
 
       # Cria o release no GitHub
       - name: Create Release
+        id: create_release
         if: env.exists == 'false'
         uses: actions/create-release@v1.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.YOUR_PAT_SECRET }}
         with:
           tag_name: ${{ env.tag }}
           release_name: Release ${{ env.tag }}
