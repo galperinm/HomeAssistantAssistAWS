@@ -67,7 +67,7 @@ class LaunchRequestHandler(AbstractRequestHandler):
         
         # Carrega o idioma do usuário
         locale = handler_input.request_envelope.request.locale
-        load_config(f"locale/{locale}.lang")        
+        load_config(f"locale/{locale}.lang")
         
         #conversation_id = None # 'Descomente' se quiser que uma nova sessão de diálogo com a IA sempre que iniciar
         
@@ -88,7 +88,6 @@ class LaunchRequestHandler(AbstractRequestHandler):
         logger.debug("Device: " + repr(device))
         
         # Renderiza o documento APL com o botão para abrir o HA (se o dispositivo tiver tela)
-        #home_assistant_token = globals().get("home_assistant_token")        
         if is_apl_supported:
             handler_input.response_builder.add_directive(
                 RenderDocumentDirective(
@@ -117,12 +116,10 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         query = handler_input.request_envelope.request.intent.slots["query"].value
         logger.info(f"Query received from Alexa: {query}")
         
-        # Se o usuário der um comando para 'abrir dashboard' ou 'abrir home assistant', abre o dashboard e interrompe a skill
-        keywords = globals().get("keywords_to_open_dashboard").split(";")
-        if any(keyword.strip().lower() in query.lower() for keyword in keywords):
-            logger.info("Opening Home Assistant dashboard")
-            open_page(handler_input)
-            return handler_input.response_builder.speak(globals().get("alexa_speak_open_dashboard")).response
+        # Trata comandos/palavras chaves específicas
+        response = keywords_exec(query, handler_input)
+        if response:
+            return response
         
         # Resposta inicial informando que a solicitação está sendo processada
         initial_response = globals().get("alexa_speak_processing")
@@ -136,6 +133,25 @@ class GptQueryIntentHandler(AbstractRequestHandler):
 
         return handler_input.response_builder.speak(response).ask(globals().get("alexa_speak_question")).response
 
+# Trata palavras chaves para executar comandos específicos
+def keywords_exec(query, handler_input):
+    # Se o usuário der um comando para 'abrir dashboard' ou 'abrir home assistant', abre o dashboard e interrompe a skill
+    keywords_top_open_dash = globals().get("keywords_to_open_dashboard").split(";")
+    if any(ko.strip().lower() in query.lower() for ko in keywords_top_open_dash):
+        logger.info("Opening Home Assistant dashboard")
+        open_page(handler_input)
+        return handler_input.response_builder.speak(globals().get("alexa_speak_open_dashboard")).response
+    
+    # Se o usuário der um comando para 'abrir dashboard' ou 'abrir home assistant', abre o dashboard e interrompe a skill
+    keywords_close_skill = globals().get("keywords_to_close_skill").split(";")
+    if any(kc.strip().lower() in query.lower() for kc in keywords_close_skill):
+        logger.info("Closing skill from keyword command")
+        return CancelOrStopIntentHandler().handle(handler_input)
+    
+    # Se não for uma palavra-chave, continua o fluxo normalmente
+    return None
+
+# Chama a API do Home Assistant e trata a resposta
 def process_conversation(query):
     global conversation_id
     
@@ -154,7 +170,7 @@ def process_conversation(query):
         }
         data = {
             "text": replace_words(query)
-        }        
+        }
         # Adding optional parameters to request
         if home_assistant_language:
             data["language"] = home_assistant_language
@@ -173,22 +189,42 @@ def process_conversation(query):
         logger.debug(f"HA response status: {response.status_code}")
         logger.debug(f"HA response data: {response.text}")
         
-        response_data = response.json()
-
-        if response.status_code == 200 and "response" in response_data:
-            conversation_id = response_data.get("conversation_id", conversation_id)
-            response_type = response_data["response"]["response_type"]
-            if response_type == "action_done" or response_type == "query_answer":
-                speech = response_data["response"]["speech"]["plain"]["speech"]
-            elif response_type == "error":
-                speech = response_data["response"]["speech"]["plain"]["speech"]
-                logger.error(f"Error code: {response_data['response']['data']['code']}")
-            else:
-                speech = globals().get("alexa_speak_error")
+        contenttype = response.headers.get('Content-Type', '')
+        logger.debug(f"Content-Type: {contenttype}")
+        
+        if (contenttype == "application/json"):
+            response_data = response.json()
+            if response.status_code == 200 and "response" in response_data:
+                conversation_id = response_data.get("conversation_id", conversation_id)
+                response_type = response_data["response"]["response_type"]
+                
+                if response_type == "action_done" or response_type == "query_answer":
+                    speech = response_data["response"]["speech"]["plain"]["speech"]
+                    # Remover "device_id:" e o que vem depois
+                    if "device_id:" in speech:
+                        speech = speech.split("device_id:")[0].strip()
+                elif response_type == "error":
+                    speech = response_data["response"]["speech"]["plain"]["speech"]
+                    logger.error(f"Error code: {response_data['response']['data']['code']}")
+                else:
+                    speech = globals().get("alexa_speak_error")
+                
             return improve_response(speech)
+        elif (contenttype == "text/html") and int(response.status_code, 0) >= 400:
+            errorMatch = re.search(r'<title>(.*?)</title>', response.text, re.IGNORECASE)
+            
+            if errorMatch:
+                title = errorMatch.group(1)
+                logger.error(f"HTTP error {response.status_code} ({title}): Unable to connect to your Home Assistant server")
+            else:
+                logger.error(f"HTTP error {response.status_code}: Unable to connect to your Home Assistant server. \n {response.text}")
+                
+            return globals().get("alexa_speak_error")
+        elif  (contenttype == "text/plain") and int(response.status_code, 0) >= 400:
+            logger.error(f"Error processing request: {response.text}")
+            return globals().get("alexa_speak_error")
         else:
-            error_message = response_data.get("message", "Erro desconhecido")
-            logger.error(f"Error processing request: {error_message}")
+            logger.error(f"Error processing request: {response.text}")
             return globals().get("alexa_speak_error")
             
     except requests.exceptions.Timeout as te:
@@ -277,14 +313,13 @@ class CancelOrStopIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         speak_output = random.choice(globals().get("alexa_speak_exit").split(";"))
-        return handler_input.response_builder.speak(globals().get("speak_output")).response
+        return handler_input.response_builder.speak(speak_output).set_should_end_session(True).response
 
 class SessionEndedRequestHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
         return ask_utils.is_request_type("SessionEndedRequest")(handler_input)
 
     def handle(self, handler_input):
-        open_page(handler_input)
         return handler_input.response_builder.response
 
 class CatchAllExceptionHandler(AbstractExceptionHandler):
