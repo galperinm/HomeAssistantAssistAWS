@@ -42,14 +42,19 @@ jobs:
     # Identifica a última tag
     - name: Get the latest tag
       id: last_tag
-      run: echo "::set-output name=tag::$(git describe --tags --abbrev=0 || echo 'v0.0')"
+      run: echo "::set-output name=tag::$(git describe --tags `git rev-list --tags --max-count=1` || echo 'lambda_functions_v0.1')"
 
     # Obtém os commits feitos desde a última tag
     - name: Get commits since last tag
       id: commit_log
       run: |
-        git log ${{ steps.last_tag.outputs.tag }}..HEAD --pretty=format:"%h - %s" > commits.txt
-        echo "::set-output name=commits::$(cat commits.txt)"
+        if [ "${{ steps.last_tag.outputs.tag }}" = "lambda_functions_v0.1" ]; then
+          echo "No commits since last tag."
+          echo "::set-output name=commits::No new commits."
+        else
+          git log ${{ steps.last_tag.outputs.tag }}..HEAD --pretty=format:"%h - %s" > commits.txt
+          echo "::set-output name=commits::$(cat commits.txt)"
+        fi
 
     # Define a versão para o release
     - name: Set release version
