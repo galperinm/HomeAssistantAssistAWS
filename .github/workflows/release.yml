@@ -48,17 +48,6 @@ jobs:
         id: last_tag
         run: echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.0')" >> $GITHUB_ENV
 
-      # Obtém os commits feitos desde a última tag
-      - name: Get commits since last tag
-        id: commit_log
-        run: |
-          if [ "${{ env.tag }}" = "lambda_functions_v0.0" ]; then
-            echo "No commits since last tag." > commits.txt
-          else
-            git log ${{ env.tag }}..HEAD --pretty=format:"%h - %s" > commits.txt
-          fi
-          echo "commits=$(cat commits.txt)" >> $GITHUB_ENV
-
       # Define a versão para o release
       - name: Set release version
         id: get_version
@@ -78,16 +67,13 @@ jobs:
       # Cria o release no GitHub
       - name: Create GitHub release
         id: create_release  # Adicione um ID para referenciar depois
-        uses: actions/create-release@v1
+        uses: actions/create-release@v1.1.4  # Atualiza para a versão mais recente
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.version }}
           release_name: Release ${{ env.version }}
-          body: |
-            Release for ${{ env.version }}.
-            Last commits:
-            ${{ env.commits }}
+          body_path: ./release_notes.md  # Obtem a descrição do release do arquivo release_notes.md
           draft: false
           prerelease: false
 
