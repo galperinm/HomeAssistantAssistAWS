@@ -56,12 +56,13 @@ jobs:
           version=$(echo $latest_tag | sed 's/lambda_functions_v//')
           IFS='.' read -r major minor patch <<< "$version"
           minor=$((minor + 1))
-          new_version="lambda_functions_v${minor}"
+          new_version="lambda_functions_v${major}.${minor}"
           echo "New version is $new_version"
           echo "version=$new_version" >> $GITHUB_ENV
 
       # Cria um arquivo ZIP da pasta lambda_functions
       - name: Zip lambda_functions folder
+        if: ${{ env.has_changes == 'true' }}  # Gera o ZIP somente se houver mudanças
         run: zip -r lambda_functions_${{ env.version }}.zip lambda_functions
 
       # Cria o release no GitHub
@@ -89,4 +90,5 @@ jobs:
 
       # Remove o arquivo .zip local após o release
       - name: Clean up
+        if: ${{ env.has_changes == 'true' }}  # Limpa somente se houver mudanças
         run: rm lambda_functions_${{ env.version }}.zip
