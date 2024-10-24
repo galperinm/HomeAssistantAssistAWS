@@ -65,7 +65,7 @@ jobs:
       # Cria um arquivo ZIP da pasta lambda_functions (se houver mudanças)
       - name: Zip lambda_functions folder
         if: ${{ env.has_changes == 'true' }}
-        run: zip -r lambda_functions_${{ env.new_version }}.zip lambda_functions
+        run: zip -r ${{ env.new_version }}.zip lambda_functions
 
       # Verifica se a tag já existe
       - name: Check if tag exists
