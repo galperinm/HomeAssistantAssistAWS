@@ -46,13 +46,13 @@ jobs:
       # Identifica a última tag
       - name: Get the latest tag
         id: last_tag
-        run: echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.0')" >> $GITHUB_ENV
+        run: echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')" >> $GITHUB_ENV
 
       # Define a versão para o release
       - name: Set release version
         id: get_version
         run: |
-          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.0')
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')
           version=$(echo $latest_tag | sed 's/lambda_functions_v//')
           IFS='.' read -r major minor patch <<< "$version"
           minor=$((minor + 1))
@@ -60,9 +60,9 @@ jobs:
           echo "New version is $new_version"
           echo "version=$new_version" >> $GITHUB_ENV
 
-      # Cria um arquivo ZIP da pasta lambda_functions
+      # Cria um arquivo ZIP da pasta lambda_functions (se houver mudanças)
       - name: Zip lambda_functions folder
-        if: ${{ env.has_changes == 'true' }}  # Gera o ZIP somente se houver mudanças
+        if: ${{ env.has_changes == 'true' }}
         run: zip -r lambda_functions_${{ env.version }}.zip lambda_functions
 
       # Verifica se a tag já existe
@@ -76,7 +76,7 @@ jobs:
             echo "exists=false" >> $GITHUB_ENV
           fi
 
-      # Cria o release no GitHub
+      # Cria o release no GitHub (se não existir uma com mesmo nome)
       - name: Create Release
         id: create_release
         if: env.exists == 'false'
@@ -85,14 +85,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.version }}
-          release_name: Release ${{ env.version }}
+          release_name: ${{ env.version }}
           body_path: ./release_notes.md
           draft: false
           prerelease: false
 
-      # Sobe o pacote de artefatos no release
+      # Sobe o pacote de artefatos no release (se houver mudanças)
       - name: Upload Release Asset
-        if: ${{ env.has_changes == 'true' }}  # Condicional para evitar upload se não houver mudanças
+        if: ${{ env.has_changes == 'true' }}
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -100,7 +100,7 @@ jobs:
           asset_name: lambda_functions_${{ env.version }}.zip
           asset_content_type: application/zip
 
-      # Remove o arquivo .zip local após o release
+      # Remove o arquivo .zip local após o release (se for criado)
       - name: Clean up
-        if: ${{ env.has_changes == 'true' }}  # Limpa somente se houver mudanças
+        if: ${{ env.has_changes == 'true' }}
         run: rm lambda_functions_${{ env.version }}.zip
