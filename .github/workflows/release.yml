@@ -65,16 +65,28 @@ jobs:
         if: ${{ env.has_changes == 'true' }}  # Gera o ZIP somente se houver mudanças
         run: zip -r lambda_functions_${{ env.version }}.zip lambda_functions
 
+      # Verifica se a tag já existe
+      - name: Check if tag exists
+        run: |
+          if git rev-parse "refs/tags/${{ env.tag }}" >/dev/null 2>&1; then
+            echo "Tag exists"
+            echo "exists=true" >> $GITHUB_ENV
+          else
+            echo "Tag does not exist"
+            echo "exists=false" >> $GITHUB_ENV
+          fi
+
       # Cria o release no GitHub
-      - name: Create GitHub release
-        id: create_release  # Adicione um ID para referenciar depois
-        uses: actions/create-release@v1.1.4  # Atualiza para a versão mais recente
+      - name: Create Release
+        id: create_release
+        if: env.exists == 'false'
+        uses: actions/create-release@v1.1.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.version }}
           release_name: Release ${{ env.version }}
-          body_path: ./release_notes.md  # Obtem a descrição do release do arquivo release_notes.md
+          body_path: ./release_notes.md
           draft: false
           prerelease: false
 
