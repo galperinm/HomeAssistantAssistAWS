@@ -97,10 +97,12 @@ jobs:
       - name: Upload Release Asset
         if: ${{ env.has_changes == 'true' }}
         uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: lambda_functions_${{ env.new_version }}.zip
-          asset_name: lambda_functions_${{ env.new_version }}.zip
+          asset_path: ${{ env.new_version }}.zip
+          asset_name: ${{ env.new_version }}.zip
           asset_content_type: application/zip
 
       # Remove o arquivo .zip local após o release (se for criado)
