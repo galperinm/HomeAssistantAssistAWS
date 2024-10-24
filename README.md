@@ -51,6 +51,8 @@ The skill has support for the following languages:
 - Italian
 - Spanish
 
+Note: If your language is not supported, please open an `issue` attaching your own version of the file [en-US.lang](lambda_functions/locale/en-US.lang).
+
 ---
 
 

@@ -6,11 +6,12 @@
 2. [Create an Amazon Alexa Skill](#create-an-amazon-alexa-skill)
 3. [Create an AWS Lambda Function](#create-an-aws-lambda-function)
 4. [Add Code to the Lambda Function](#add-code-to-the-lambda-function)
-5. [Test the Lambda Function](#test-the-lambda-function)
-6. [Configure the Skill Service Endpoint](#configure-the-skill-service-endpoint)
-7. [Account Linking](#account-linking)
-8. [Enabling skill on Alexa App](#enabling-skill-on-alexa-app)
-9. [Alexa Locale](#alexa-locale)
+5. [Getting the home_assistant_agent_id](#getting-the-home_assistant_agent_id)
+6. [Test the Lambda Function](#test-the-lambda-function)
+7. [Configure the Skill Service Endpoint](#configure-the-skill-service-endpoint)
+8. [Account Linking](#account-linking)
+9. [Enabling skill on Alexa App](#enabling-skill-on-alexa-app)
+10. [Alexa Locale](#alexa-locale)
 
 ---
 
@@ -23,7 +24,7 @@
 - Sign into the [Alexa Developer Console](https://developer.amazon.com/alexa/console/ask). You can create your free account on the sign-in page.
 _Note: This must be created with the same `Amazon account` you use on your Alexa devices and app._
 - Go to the `Alexa Skills` page if you are not already there, then click the `Create Skill` button to start the process.
-- In the `Name, Locale` step: Input the `Skill name` as you like, then select your skill’s Default `language` and click `Next`.
+- In the `Name, Locale` step: Input the `Skill name` as you like, then select your skill’s Default `language` and click `Next`. _**Important**: The language of your skill must be the same as the language of your Amazon/Alexa account. [More information about supported languages here](../../README.md#supported-languages)_
 - In the `Experience, Model, Hosting service` step: Select `Other` > `Custom` > `Provision your own`, then click `Next`.
 - In the `Template` step: Select `Start from Scratch` and click `Next`.
 - Review and click `Create Skill`.
@@ -82,11 +83,11 @@ Next, you need to create a Lambda function.
 - Navigate to the `Configuration` tab, select `Environment variables` on the left navigation menu. You need to add `at least one environment variable` from the list below. The remaining variables are `optional`, but they configure specific features in the skill's operation. To add a variable, click on  `Edit` button, then add the following key and values:
 
   ![](images/lambda_envvar.png)
-  - (required) Key = **home_assistant_url**, Value = your Home Assistant instance’s Internet accessible URL. Do not include the trailing `/` at the end.
-  - (optional) Key = **home_assistant_agent_id**, Value = Your Assist Agent ID. (instructions here)
-  - (optional) Key = **home_assistant_language**, Value = Your Assist Language. (The default is the Assist configured language)
-  - (optional) Key = **home_assistant_dashboard**, Value = Your dashboard path name. (The default is `lovelace`)
-  - (optional) Key = **home_assistant_kioskmode**, Value = `True`. Set this variable to enable KIOSKMODE (make sure you have this component installed, up, and running in your Home Assistant instance).
+  - (required) Key = **home_assistant_url**, Value = your Home Assistant instance’s Internet accessible URL _(on 443 port)_. _Do not include the trailing `/` at the end._
+  - (optional) Key = **home_assistant_agent_id**, Value = Your Assist Agent ID. [Instructions here](#getting-the-home_assistant_agent_id)
+  - (optional) Key = **home_assistant_language**, Value = Your Assist Language. _(The default is the Assist configured language)_
+  - (optional) Key = **home_assistant_dashboard**, Value = Your dashboard path name. Example: `mushroom`. _(The default is `lovelace`)_
+  - (optional) Key = **home_assistant_kioskmode**, Value = `True`. Set this variable to enable KIOSKMODE. _(Make sure you have this component installed, up, and running in your Home Assistant instance)._
   - (optional) Key = **debug**, Value = `True`. Set this variable to log the debug messages and allow the `home_assistant_token` environment variable.
   - (optional, _not recommended_) Key = **home_assistant_token**, Value = Your Home Assistant Long-Lived Access Token. You will connect your Alexa Skill with your Home Assistant user account in the later steps, meaning you don’t need to add it here. However, you can add it here for debugging purposes. _(You should remove and delete this environment variable after debugging is finished)_.
 - Click the **Save** button in the bottom right-hand corner.
@@ -95,6 +96,22 @@ Next, you need to create a Lambda function.
   - Click `Save` in the bottom right.
 
     ![](images/lambda_timeout.png)
+
+## Getting the `home_assistant_agent_id`:
+
+- With your Home Assistant open, navigate to **Developer Tools**, go to the `Actions` tab and follow the steps below:
+
+1. Search for `conversation.process` in the actions field and select:
+
+![Action: Conversation: Process](images/dev_action.png)
+
+2. Activate the `Agent` field and select the desired conversational agent from the list:
+
+![Action: Agent](images/dev_action_uimode.png)
+
+3. Switch to `YAML MODE` and copy the ID that is in the `agent_id` field:
+
+![Action: Agent ID](images/dev_action_yaml.png)
 
 ## Test the Lambda Function
 Now, you have created the Lambda function, and you are going to do a basic test.
