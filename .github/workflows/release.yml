@@ -84,7 +84,7 @@ jobs:
       # Cria o release no GitHub (se não existir uma com mesmo nome)
       - name: Create Release
         id: create_release
-        if: ${{ env.has_changes == 'true' }} && env.exists == 'false'
+        if: ${{ env.has_changes == 'true' && env.exists == 'false' }}
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
