@@ -19,7 +19,7 @@ jobs:
     steps:
       # Checkout do código do repositório
       - name: Checkout repository
-        uses: actions/checkout
+        uses: actions/checkout@4.2.2
         with:
           fetch-depth: 5
 
