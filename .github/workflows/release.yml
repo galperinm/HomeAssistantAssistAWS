@@ -43,32 +43,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -t .
 
-      # Identifica a última tag
-      - name: Get the latest tag
-        id: last_tag
-        run: echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')" >> $GITHUB_ENV
-
       # Define a versão para o release
       - name: Set release version
         id: get_version
         run: |
           latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')
           version=$(echo $latest_tag | sed 's/lambda_functions_v//')
+          tag=$version
           IFS='.' read -r major minor patch <<< "$version"
           minor=$((minor + 1))
           new_version="lambda_functions_v${major}.${minor}"
+          new_tag=$new_version
           echo "New version is $new_version"
           echo "version=$new_version" >> $GITHUB_ENV
 
       # Cria um arquivo ZIP da pasta lambda_functions (se houver mudanças)
       - name: Zip lambda_functions folder
         if: ${{ env.has_changes == 'true' }}
-        run: zip -r lambda_functions_${{ env.version }}.zip lambda_functions
+        run: zip -r lambda_functions_${{ env.new_version }}.zip lambda_functions
 
       # Verifica se a tag já existe
       - name: Check if tag exists
         run: |
-          if git rev-parse "refs/tags/${{ env.tag }}" >/dev/null 2>&1; then
+          if git rev-parse "refs/tags/${{ env.new_tag }}" >/dev/null 2>&1; then
             echo "Tag exists"
             echo "exists=true" >> $GITHUB_ENV
           else
@@ -84,8 +81,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.version }}
-          release_name: ${{ env.version }}
+          tag_name: ${{ env.new_tag }}
+          release_name: ${{ env.new_version }}
           body_path: ./release_notes.md
           draft: false
           prerelease: false
@@ -96,11 +93,11 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: lambda_functions_${{ env.version }}.zip
-          asset_name: lambda_functions_${{ env.version }}.zip
+          asset_path: lambda_functions_${{ env.new_version }}.zip
+          asset_name: lambda_functions_${{ env.new_version }}.zip
           asset_content_type: application/zip
 
       # Remove o arquivo .zip local após o release (se for criado)
       - name: Clean up
         if: ${{ env.has_changes == 'true' }}
-        run: rm lambda_functions_${{ env.version }}.zip
+        run: rm lambda_functions_${{ env.new_version }}.zip
