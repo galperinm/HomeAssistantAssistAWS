@@ -62,10 +62,12 @@ jobs:
           echo "New version is $new_version"
           echo "new_version=$new_version" >> $GITHUB_ENV
 
-      # Cria um arquivo ZIP da pasta lambda_functions (se houver mudanças)
+      # Cria um arquivo ZIP com os artefatos da pasta lambda_functions (se houver mudanças)
       - name: Zip lambda_functions folder
         if: ${{ env.has_changes == 'true' }}
-        run: zip -r ${{ env.new_version }}.zip lambda_functions
+        run: |
+          cd lambda_functions
+          zip -r ../${{ env.new_version }}.zip .
 
       # Verifica se a tag já existe
       - name: Check if tag exists
@@ -82,7 +84,7 @@ jobs:
       # Cria o release no GitHub (se não existir uma com mesmo nome)
       - name: Create Release
         id: create_release
-        if: env.exists == 'false'
+        if: ${{ env.has_changes == 'true' }} && env.exists == 'false'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -108,4 +110,4 @@ jobs:
       # Remove o arquivo .zip local após o release (se for criado)
       - name: Clean up
         if: ${{ env.has_changes == 'true' }}
-        run: rm lambda_functions_${{ env.new_version }}.zip
+        run: rm ${{ env.new_version }}.zip
