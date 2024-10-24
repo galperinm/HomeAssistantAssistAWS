@@ -60,7 +60,7 @@ jobs:
           minor=$((minor + 1))
           new_version="lambda_functions_v${major}.${minor}"
           echo "New version is $new_version"
-          echo "version=$new_version" >> $GITHUB_ENV
+          echo "new_version=$new_version" >> $GITHUB_ENV
 
       # Cria um arquivo ZIP da pasta lambda_functions (se houver mudanças)
       - name: Zip lambda_functions folder
@@ -69,6 +69,7 @@ jobs:
 
       # Verifica se a tag já existe
       - name: Check if tag exists
+        id: tag_exists
         run: |
           if git rev-parse "refs/tags/${{ env.new_version }}" >/dev/null 2>&1; then
             echo "Tag exists"
@@ -82,7 +83,7 @@ jobs:
       - name: Create Release
         id: create_release
         if: env.exists == 'false'
-        uses: actions/create-release@v1.1.4
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
