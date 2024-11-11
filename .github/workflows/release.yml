@@ -57,12 +57,14 @@ jobs:
           if [ -z "$latest_tag" ]; then
             latest_tag="lambda_functions_v0.1"
           fi
-          version=$(echo $latest_tag | sed 's/lambda_functions_v//')
-          IFS='.' read -r major minor patch <<< "$version"
-          minor=$((minor + 1))
+          
+          version=$(echo "$latest_tag" | sed 's/lambda_functions_v//')
+          IFS='.' read -r major minor <<< "$version"          
+          minor=$((minor + 1))          
           new_version="lambda_functions_v${major}.${minor}"
+          
           echo "New version is $new_version"
-          echo "new_version=$new_version" >> $GITHUB_ENV
+          echo "new_version=$new_version" >> $GITHUB_ENV    
 
       # Cria um arquivo ZIP com os artefatos da pasta lambda_functions (se houver mudanças)
       - name: Zip lambda_functions folder
