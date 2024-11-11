@@ -57,6 +57,8 @@ jobs:
           if [ -z "$latest_tag" ]; then
             latest_tag="lambda_functions_v0.1"
           fi
+
+          echo "latest_tag is $latest_tag"
           
           version=$(echo "$latest_tag" | sed 's/lambda_functions_v//')
           IFS='.' read -r major minor <<< "$version"          
