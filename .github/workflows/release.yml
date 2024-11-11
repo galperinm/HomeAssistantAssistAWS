@@ -21,7 +21,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 5
+          fetch-depth: 0
 
       # Verifica se houve mudanças dentro de lambda_functions
       - name: Check changes in lambda_functions
