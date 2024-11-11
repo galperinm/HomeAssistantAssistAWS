@@ -53,7 +53,7 @@ jobs:
       - name: Set release version
         id: get_version
         run: |
-          latest_tag=$(git tag -l "lambda_functions_v*" --sort=-v:refname | head -n 1)
+          latest_tag=$(git tag -l "lambda_functions_v*" | sort -V | tail -n 1)
 
           echo "latest_tag is $latest_tag"
 
