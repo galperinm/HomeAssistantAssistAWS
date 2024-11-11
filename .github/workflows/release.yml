@@ -53,9 +53,11 @@ jobs:
       - name: Set release version
         id: get_version
         run: |
-          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) || echo 'lambda_functions_v0.1')
+          latest_tag=$(git tag -l "lambda_functions_v*" --sort=-v:refname | head -n 1)
+          if [ -z "$latest_tag" ]; then
+            latest_tag="lambda_functions_v0.1"
+          fi
           version=$(echo $latest_tag | sed 's/lambda_functions_v//')
-          tag=$version
           IFS='.' read -r major minor patch <<< "$version"
           minor=$((minor + 1))
           new_version="lambda_functions_v${major}.${minor}"
