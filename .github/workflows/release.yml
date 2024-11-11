@@ -54,6 +54,9 @@ jobs:
         id: get_version
         run: |
           latest_tag=$(git tag -l "lambda_functions_v*" --sort=-v:refname | head -n 1)
+
+          echo "latest_tag is $latest_tag"
+
           if [ -z "$latest_tag" ]; then
             latest_tag="lambda_functions_v0.1"
           fi
