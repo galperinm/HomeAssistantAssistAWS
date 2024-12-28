@@ -142,7 +142,7 @@ def keywords_exec(query, handler_input):
         open_page(handler_input)
         return handler_input.response_builder.speak(globals().get("alexa_speak_open_dashboard")).response
     
-    # Se o usuário der um comando para 'abrir dashboard' ou 'abrir home assistant', abre o dashboard e interrompe a skill
+    # Se o usuário der um comando de agradecimento o upara sair, interrompe a skill
     keywords_close_skill = globals().get("keywords_to_close_skill").split(";")
     if any(kc.strip().lower() in query.lower() for kc in keywords_close_skill):
         logger.info("Closing skill from keyword command")
@@ -245,9 +245,10 @@ def replace_words(query):
 def improve_response(speech):
     # Função para melhorar a legibilidade da resposta
     speech = speech.replace(':\n\n', '').replace('\n\n', '. ').replace('\n', ',').replace('-', '').replace('_', ' ')
-    replacements = str.maketrans('ïöüÏÖÜ', 'iouIOU')
-    speech = speech.translate(replacements)
-    speech = re.sub(r'[^A-Za-z0-9çÇáàâãéèêíóôõúñÁÀÂÃÉÈÊÍÓÔÕÚÑ\s.,!?]', '', speech)
+    #replacements = str.maketrans('ïöüÏÖÜ', 'iouIOU')
+    #speech = speech.translate(replacements)
+    #speech = re.sub(r'[^A-Za-z0-9çÇáàâãéèêíóôõúñÁÀÂÃÉÈÊÍÓÔÕÚÑ\s.,!?]', '', speech)
+    speech = re.sub(r'[^A-Za-z0-9\s.,!?]', '', speech)
     return speech
 
 # Carrega o template do APL da tela inicial
