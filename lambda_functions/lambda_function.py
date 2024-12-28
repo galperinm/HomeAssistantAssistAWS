@@ -121,6 +121,12 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         if response:
             return response
         
+        device_id = ""
+        home_assistant_room_recognition = bool(os.environ.get("home_assistant_room_recognition", False))
+        if home_assistant_room_recognition:
+            # Obter o deviceId do dispositivo que executou a skill
+            device_id = ". device_id: " + handler_input.request_envelope.context.system.device.device_id
+        
         # Resposta inicial informando que a solicitação está sendo processada
         initial_response = globals().get("alexa_speak_processing")
         handler_input.response_builder.speak(initial_response).set_should_end_session(False)
@@ -128,7 +134,7 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         # Executa a parte assíncrona com asyncio
         loop = asyncio.new_event_loop()  # Cria um novo event loop
         asyncio.set_event_loop(loop)  # Define o loop de eventos para a thread atual
-        future = loop.run_in_executor(executor, process_conversation, query)
+        future = loop.run_in_executor(executor, process_conversation, query + device_id)
         response = loop.run_until_complete(future)
 
         return handler_input.response_builder.speak(response).ask(globals().get("alexa_speak_question")).response

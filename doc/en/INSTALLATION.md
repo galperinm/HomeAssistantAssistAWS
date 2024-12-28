@@ -10,8 +10,9 @@
 6. [Test the Lambda Function](#test-the-lambda-function)
 7. [Configure the Skill Service Endpoint](#configure-the-skill-service-endpoint)
 8. [Account Linking](#account-linking)
-9. [Enabling skill on Alexa App](#enabling-skill-on-alexa-app)
-10. [Alexa Locale](#alexa-locale)
+9. [Enabling room recognition](#enabling-room-recognition)
+10. [Enabling skill on Alexa App](#enabling-skill-on-alexa-app)
+11. [Alexa Locale](#alexa-locale)
 
 ---
 
@@ -86,6 +87,7 @@ Next, you need to create a Lambda function.
   - (required) Key = **home_assistant_url**, Value = your Home Assistant instance’s Internet accessible URL _(on 443 port)_. _Do not include the trailing `/` at the end._
   - (optional) Key = **home_assistant_agent_id**, Value = Your Assist Agent ID. [Instructions here](#getting-the-home_assistant_agent_id)
   - (optional) Key = **home_assistant_language**, Value = Your Assist Language. _(The default is the Assist configured language)_
+  - (optional) Key = **home_assistant_room_recognition**: Enable the device area recognition mode with `True`. **Attention**, it only works with AI. If using the default Assist, disable this option, as no commands will work (this includes the new `Assist fallback` feature introduced in HA 2024.12 that will no longger work too).
   - (optional) Key = **home_assistant_dashboard**, Value = Your dashboard path name. Example: `mushroom`. _(The default is `lovelace`)_
   - (optional) Key = **home_assistant_kioskmode**, Value = `True`. Set this variable to enable KIOSKMODE. _(Make sure you have this component installed, up, and running in your Home Assistant instance)._
   - (optional) Key = **debug**, Value = `True`. Set this variable to log the debug messages and allow the `home_assistant_token` environment variable.
@@ -197,6 +199,32 @@ Despite the Alexa documentation’s disclaimer, however, `Let’s Encrypt` certi
 - Click `CUSTOM` in the left navigation bar of the `Build` page and `Build Skill` in the top right corner.
 
   ![](images/skill_accountlinking.png)
+
+### Enabling room recognition
+- **(ONLY WORKS WITH AI)** In this mode, the skill sends the device ID (of the `echo` device running the skill) in the Home Assistant conversation API call. With a command instruction for the AI and a label associated with the device, the AI can identify the devices in the same area as your `Alexa`. To activate, follow the steps below:
+
+  ***Attention!***
+  ## This mode slows down commands and requires more complex configurations. Additionally, it does not work with the "Assist fallback" mode enabled, which was introduced in version 2024.12 of HA:
+  1. Change the `home_assistant_room_recognition` configuration to `True` and perform a new `deploy`;
+  2. Enable conversation API debug logging by adding the following configuration to the Home Assistant `configuration.yaml` file:
+     ```yaml
+     logger:
+       logs:
+         homeassistant.components.conversation: debug
+     ```
+  3. Restart Home Assistant and start the skill from the desired echo device. After activation, the log will display the instruction received by the skill as shown in the example below:
+     ```txt
+     2024-10-10 11:04:56.798 DEBUG (MainThread) [homeassistant.components.conversation.agent_manager] Processing in pt-BR: ligue a luz da sala. device_id: amzn1.ask.device.AMAXXXXXX
+     ```
+     You can also obtain the device_id from the "device: " log using the `AWS Developer Console` > `Monitor` > `Cloud Watch logs` if you know how to do it.
+  4. Take the entire identifier following the device_id, e.g., `amzn1.ask.device.AMAXXXXXX`, and add a new label to the **echo device** via the `Alexa Media Player` Integration:
+
+     ![Label on the echo device with the device ID received from the skill](images/echo_device_label.png)
+
+  5. Update the **AI command prompt** of your choice with the instruction below or try one that your AI understands:
+     ```txt
+     If an action is requested on a device and its area is not provided, capture the identifier found after "device_id:" in the command, retrieve the label with the same identifier, and associate the area of that label with the device to determine which area the device belongs to.
+     ```
 
 ## Enabling skill on Alexa App
 - You need to use the `Alexa Mobile App` to link your account.

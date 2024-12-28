@@ -10,8 +10,9 @@
 6. [Testar a Função Lambda](#testar-a-função-lambda)
 7. [Configurar o Endpoint do Serviço da Skill](#configurar-o-endpoint-do-serviço-da-skill)
 8. [Vinculação de Conta](#vinculação-de-conta)
-9. [Habilitar a Skill no App Alexa](#habilitar-a-skill-no-app-alexa)
-10. [Localização da Alexa](#localização-da-alexa)
+9. [Ativando o reconhecimento de área](#ativando-o-reconhecimento-de-área)
+10. [Habilitar a Skill no App Alexa](#habilitar-a-skill-no-app-alexa)
+11. [Localização da Alexa](#localização-da-alexa)
 
 ---
 
@@ -86,6 +87,7 @@ Agora você precisa criar uma função Lambda.
   - (obrigatório) Chave = **home_assistant_url**, Valor = A URL raiz do seu Home Assistant acessível pela Internet _(na porta 443)_. _Não inclua a barra `/` no final._
   - (opcional) Chave = **home_assistant_agent_id**, Valor = O Agent ID do seu Assist. [instruções aqui](#obtendo-o-home_assistant_agent_id)
   - (opcional) Chave = **home_assistant_language**, Valor = O idioma configurado no seu Assist. _(O padrão é o idioma configurado no Assist)_
+  - (opcional) Chave = **home_assistant_room_recognition**: Ative o modo de identificação de área do dispositivo com `True`. **Atenção**, só funciona com IA, se utilizar o Assist padrão, desative essa opção, pois nenhum comando não irá funcionar (isso inclui a nova funcionalidade `Assist fallback` do HA 2024.12 que também não irá funcionar).
   - (opcional) Chave = **home_assistant_dashboard**, Valor = O ID do seu painel. Exemplo: `mushroom`. _(O padrão é 'lovelace') _
   - (opcional) Chave = **home_assistant_kioskmode**, Valor = `True`. Defina esta variável para habilitar o KIOSKMODE. _(Certifique-se de que você tenha este componente instalado, configurado e funcionando em sua instância do Home Assistant)._
   - (opcional) Chave = **debug**, Valor = `True`. Defina esta variável para registrar as mensagens de depuração e permitir a variável de ambiente `home_assistant_token`.
@@ -196,6 +198,33 @@ Apesar do aviso de isenção de responsabilidade da documentação da Alexa, os 
 - Clique em `CUSTOM` na barra de navegação à esquerda da página `Build` e em `Build Skill` no canto superior direito.
 
   ![](../en/images/skill_accountlinking.png)
+
+### Ativando o reconhecimento de área
+- **(SÓ FUNCIONA COM IA)** Nesse modo, a skill envia o device id (do dispositivo `echo` que está executando a skill) na chamada da API de conversação do Home Assistant, então com uma instrução de comando para a IA e um rótulo associado no dispositivo, a IA consegue identificador os dispositivo da mesma área onde está localizado sua `Alexa`, para ativar, siga os passos abaixo:
+
+  ***Atenção !***
+  ## Esse modo deixa os comandos mais lentos e e exige configurações mais complexas, além de não funcionar com o modo "Assist fallback" ativado que foi incluido na versão 2024.12 do HA:
+  1. Altere a configuração `home_assistant_room_recognition` para `True` e faça um novo `deploy`;
+  2. Ative o log de debug da API de conversação adicionando a seguinte configuração no `configuration.yaml` do Home Assistant:
+  - Insira a seguinte informação:
+     ```txt
+     logger:
+       logs:
+         homeassistant.components.conversation: debug
+     ```
+  3. Reinicie o Home Assistant e inicie a skill pelo dispositivo echo desejado, depois de ativado, o log mostrará a instrução recebida pela skill conforme o exemplo abaixo:
+    ```txt
+    2024-10-10 11:04:56.798 DEBUG (MainThread) [homeassistant.components.conversation.agent_manager] Processing in pt-BR: ligue a luz da sala. device_id: amzn1.ask.device.AMAXXXXXX
+     ```
+     Você também pode obter o device_id no log "device: " pela ``AWS Developer Console`` > ```Monitor`` ``Cloud Watch logs`` se souber como fazê-lo.
+  4. Pegue todo o identificador que estiver após o device_id, ex.: `amzn1.ask.device.AMAXXXXXX` e adicione um novo rótulo no **dispositivo echo** pela Integração `Alexa Media Player`:
+  
+    ![Rótulo no dispositivo echo com o device ID recebido da skill](images/echo_device_label.png)
+    
+  5. Atualize o **prompt de comando da IA** de sua preferência com a instrução abaixo ou tente uma instrução que a sua IA entenda:
+     ```txt
+     Se solicitado uma ação em um dispositivo e sua área não for fornecida, capture o identificador contido após o "device_id:" no comando, obtenha o rótulo com mesmo identificador e associe a área desse rótulo ao dispositivo para saber área o dispositivo pertence.
+     ```
 
 ## Habilitar a Skill no App Alexa
 - Você precisa usar o `Alexa Mobile App` para vincular sua conta.
