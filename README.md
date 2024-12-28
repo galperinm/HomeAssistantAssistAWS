@@ -47,6 +47,7 @@ The skill has support for the following languages:
 - Portuguese (Portugal)
 - English (United States)
 - English (England)
+- English (Canada)
 - French
 - Italian
 - Spanish
@@ -106,6 +107,7 @@ A skill tem suporte para os seguintes idiomas:
 - Português (Portugal)
 - Inglês (Estados Unidos)
 - Inglês (Inglaterra)
+- Inglês (Canadá)
 - Francês
 - Italiano
 - Espanhol
