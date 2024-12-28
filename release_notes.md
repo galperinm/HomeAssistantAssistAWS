@@ -1,11 +1,13 @@
 # New release
 
 ## What's changed
-- Added german language
+- Added English Canada language
+- Fixed issue with special characters in some languages.
 
 ---
 
 # Nova versão
 
 ## O que mudou
-- inclusão do idioma alemão
+- Inclusão do idioma inglês canadense
+- Corrigido o problema com caracteres especiais em algums idiomas.
