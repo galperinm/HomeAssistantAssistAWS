@@ -78,7 +78,7 @@ Next, you need to create a Lambda function.
   ![](images/lambda_trigger.png)
 
 - Now scroll down to the `Code` tab > `Code source`, then click the `Upload from` button on the right and select `zip file`.
-  - Upload the `lambda_function.zip` downloaded from the [latest releases](https://github.com/fabianosan/HomeAssistantAssistAWS/releases/download/lambda_functions_v0.1/lambda_functions_v0.1.zip).
+  - Upload the `lambda_function.zip` downloaded from the [latest releases](https://github.com/fabianosan/HomeAssistantAssistAWS/releases/download/lambda_functions_v0.6/lambda_functions_v0.6.zip).
   - All the code will be replaced by the uploaded file, and you can’t edit it _(If you want to edit any files, do it in your station before this step)_.
 - Click on `Deploy` button to publish the updated code.
 - Navigate to the `Configuration` tab, select `Environment variables` on the left navigation menu. You need to add `at least one environment variable` from the list below. The remaining variables are `optional`, but they configure specific features in the skill's operation. To add a variable, click on  `Edit` button, then add the following key and values:
