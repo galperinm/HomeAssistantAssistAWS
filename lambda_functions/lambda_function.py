@@ -68,7 +68,11 @@ class LaunchRequestHandler(AbstractRequestHandler):
         # Carrega o idioma do usuário
         locale = handler_input.request_envelope.request.locale
         load_config(f"locale/{locale}.lang")
-        
+
+        # save user_locale var for regional differences in number handling like 2.4°C / 2,4°C
+        global user_locale
+        user_locale = locale.split("-")[1]  # "de-DE" -> "DE" split to respect lang differencies (not country specific)
+   
         #conversation_id = None # 'Descomente' se quiser que uma nova sessão de diálogo com a IA sempre que iniciar
         
         account_linking_token = handler_input.request_envelope.context.system.user.access_token
@@ -255,7 +259,12 @@ def improve_response(speech):
     #replacements = str.maketrans('ïöüÏÖÜ', 'iouIOU')
     #speech = speech.translate(replacements)
     
-    speech = re.sub(r'[^A-Za-z0-9çÇáàâãäéèêíïóôõöúüñÁÀÂÃÄÉÈÊÍÏÓÔÕÖÚÜÑ\sß.,!?]', '', speech)
+    # change decimal seperator if user_locale = "de-DE"
+    if user_locale == "DE":
+        # only replace decimal seperators and not 1.000 seperators
+        speech = re.sub(r'(\d+)\.(\d{1,3})(?!\d)', r'\1,\2', speech)  # Dezimalpunkt (z. B. 2.4 -> 2,4)
+    
+    speech = re.sub(r'[^A-Za-z0-9çÇáàâãéèêíïóôõöúüñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÑ\s.,!?]', '', speech)
     return speech
 
 # Carrega o template do APL da tela inicial
