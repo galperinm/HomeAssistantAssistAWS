@@ -264,7 +264,7 @@ def improve_response(speech):
         # only replace decimal seperators and not 1.000 seperators
         speech = re.sub(r'(\d+)\.(\d{1,3})(?!\d)', r'\1,\2', speech)  # Dezimalpunkt (z. B. 2.4 -> 2,4)
     
-    speech = re.sub(r'[^A-Za-z0-9çÇáàâãéèêíïóôõöúüñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÑ\s.,!?]', '', speech)
+    speech = re.sub(r'[^A-Za-z0-9çÇáàâãäéèêíïóôõöúüñÁÀÂÃÄÉÈÊÍÏÓÔÕÖÚÜÑ\sß.,!?°]', '', speech)
     return speech
 
 # Carrega o template do APL da tela inicial
