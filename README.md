@@ -43,16 +43,21 @@ For instructions how to set this skill up refer to the [installation](doc/en/INS
 
 The skill has support for the following languages:
 
+- German (Germany)
+- English (Australia)
+- English (Canada)
+- English (England)
+- English (United States)
+- Dutch (Netherlands)
+- Spanish (Spain)
+- Spanish (Mexico)
+- Spanish (United States)
+- French (Canada)
+- French (France)
+- Italian (Italy)
+- Polish (Poland)
 - Portuguese (Brazil)
 - Portuguese (Portugal)
-- English (United States)
-- English (England)
-- English (Canada)
-- French
-- Italian
-- Spanish
-- German
-- Polish (Poland)
 - Russian (Russia)
 
 Note: If your language is not supported, please open an `issue` attaching your own version of the file [en-US.lang](lambda_functions/locale/en-US.lang).
@@ -105,14 +110,19 @@ Para obter instruções sobre como configurar essa skill, consulte a página de 
 
 A skill tem suporte para os seguintes idiomas:
 
+- Alemão (Alemanha)
+- Inglês (Austrália)
+- Inglês (Canadá)
+- Inglês (Inglaterra)
+- Inglês (Estados Unidos)
+- Espanhol (Espanha)
+- Espanhol (México)
+- Espanhol (Estados Unidos)
+- Francês (Canadá)
+- Francês (França)
+- Italiano (Itália)
+- Holandês (Holanda)
+- Polonês (Polônia)
 - Português (Brasil)
 - Português (Portugal)
-- Inglês (Estados Unidos)
-- Inglês (Inglaterra)
-- Inglês (Canadá)
-- Francês
-- Italiano
-- Espanhol
-- Alemão
-- Polonês (Polônia)
 - Russo (Rússia)
