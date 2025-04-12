@@ -55,6 +55,10 @@ is_apl_supported = False
 account_linking_token = None
 # URL base do Home Assistant
 home_assistant_url = os.environ.get('home_assistant_url', "").strip("/")
+# Was launched without intent
+no_intent = False
+# Follow up needed
+followup_needed = False
 # Document Token
 apl_document_token = str(uuid.uuid4())
 
@@ -63,28 +67,13 @@ class LaunchRequestHandler(AbstractRequestHandler):
         return ask_utils.is_request_type("LaunchRequest")(handler_input)
 
     def handle(self, handler_input):
-        global conversation_id, last_interaction_date, is_apl_supported, account_linking_token
+        global conversation_id, last_interaction_date, is_apl_supported, no_intent
         
-        # Carrega o idioma do usuário
-        locale = handler_input.request_envelope.request.locale
-        load_config(f"locale/{locale}.lang")
+        #Indicate that the skill was launched without intent
+        logger.info("Skill launched without intent")
+        no_intent = True
 
-        # save user_locale var for regional differences in number handling like 2.4°C / 2,4°C
-        global user_locale
-        user_locale = locale.split("-")[1]  # "de-DE" -> "DE" split to respect lang differencies (not country specific)
-   
         #conversation_id = None # 'Descomente' se quiser que uma nova sessão de diálogo com a IA sempre que iniciar
-        
-        account_linking_token = handler_input.request_envelope.context.system.user.access_token
-        # Obter o token de Account Linking
-        if account_linking_token is None and debug:
-            account_linking_token = os.environ.get('home_assistant_token') # DEBUG Purpose
-
-        # Verificar se o token foi obtido com sucesso
-        if not account_linking_token:
-            logger.error("Unable to get token from Alexa Account Linking or AWS Functions environment variable.")
-            speak_output = globals().get("alexa_speak_error")
-            return handler_input.response_builder.speak(speak_output).response
 
         # Verifica se o dispositivo tem tela (APL support), se sim, carrega a interface
         device = handler_input.request_envelope.context.system.device
@@ -119,7 +108,7 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         # Captura a consulta do usuário
         query = handler_input.request_envelope.request.intent.slots["query"].value
         logger.info(f"Query received from Alexa: {query}")
-        
+
         # Trata comandos/palavras chaves específicas
         response = keywords_exec(query, handler_input)
         if response:
@@ -133,18 +122,31 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         
         # Resposta inicial informando que a solicitação está sendo processada
         initial_response = globals().get("alexa_speak_processing")
-        handler_input.response_builder.speak(initial_response).set_should_end_session(False)
+        handler_input.response_builder.speak(initial_response)
+        logger.info(f"Initial response: {initial_response}")
 
         # Executa a parte assíncrona com asyncio
         loop = asyncio.new_event_loop()  # Cria um novo event loop
         asyncio.set_event_loop(loop)  # Define o loop de eventos para a thread atual
-        future = loop.run_in_executor(executor, process_conversation, query + device_id)
+        future = loop.run_in_executor(executor, process_conversation, query + device_id, handler_input)
         response = loop.run_until_complete(future)
 
-        return handler_input.response_builder.speak(response).ask(globals().get("alexa_speak_question")).response
+        logger.info(f"Follow-up needed is {followup_needed}, no intent is {no_intent}")
+        
+        if followup_needed == True:
+            logger.info(f"Asked follow-up question")
+            return handler_input.response_builder.speak(response).ask(response).response
+        elif (followup_needed == False and no_intent == True):
+            logger.info(f"Answered and waiting for next input")
+            return handler_input.response_builder.speak(response).ask(globals().get("alexa_speak_question")).response
+        else: 
+            logger.info(f"Answered and ending session")
+            return handler_input.response_builder.speak(response).set_should_end_session(True).response
+        
 
 # Trata palavras chaves para executar comandos específicos
 def keywords_exec(query, handler_input):
+    
     # Se o usuário der um comando para 'abrir dashboard' ou 'abrir home assistant', abre o dashboard e interrompe a skill
     keywords_top_open_dash = globals().get("keywords_to_open_dashboard").split(";")
     if any(ko.strip().lower() in query.lower() for ko in keywords_top_open_dash):
@@ -162,9 +164,16 @@ def keywords_exec(query, handler_input):
     return None
 
 # Chama a API do Home Assistant e trata a resposta
-def process_conversation(query):
-    global conversation_id
-    
+def process_conversation(query, handler_input):
+    global conversation_id, account_linking_token, user_locale
+
+    account_linking_token = handler_input.request_envelope.context.system.user.access_token
+    if account_linking_token is None and debug:
+        account_linking_token = os.environ.get('home_assistant_token') # DEBUG Purpose
+    if not account_linking_token:
+        logger.error("Unable to get token from Alexa Account Linking or AWS Functions environment variable.")
+        return globals().get("alexa_speak_error")
+
     # Obtem as variáveis de ambiente configuradas pelo usuário
     if not home_assistant_url:
         logger.error("Please set 'home_assistant_url' AWS Lambda Functions environment variable.")
@@ -219,7 +228,7 @@ def process_conversation(query):
                 else:
                     speech = globals().get("alexa_speak_error")
                 
-            return improve_response(speech)
+            return improve_response(speech, handler_input)
         elif (contenttype == "text/html") and int(response.status_code, 0) >= 400:
             errorMatch = re.search(r'<title>(.*?)</title>', response.text, re.IGNORECASE)
             
@@ -252,19 +261,30 @@ def replace_words(query):
     return query
 
 # Substitui palavras e caracteres especiais para falar a resposta da API
-def improve_response(speech):
+def improve_response(speech, handler_input):
+    global user_locale, followup_needed
     # Função para melhorar a legibilidade da resposta
     speech = speech.replace(':\n\n', '').replace('\n\n', '. ').replace('\n', ',').replace('-', '').replace('_', ' ')
     
     #replacements = str.maketrans('ïöüÏÖÜ', 'iouIOU')
     #speech = speech.translate(replacements)
-    
+
+    # Carrega o idioma do usuário
+    locale = handler_input.request_envelope.request.locale
+    load_config(f"locale/{locale}.lang")
+    # save user_locale var for regional differences in number handling like 2.4°C / 2,4°C
     # change decimal seperator if user_locale = "de-DE"
+    user_locale = locale.split("-")[1]  # "de-DE" -> "DE" split to respect lang differencies (not country specific)
     if user_locale == "DE":
         # only replace decimal seperators and not 1.000 seperators
         speech = re.sub(r'(\d+)\.(\d{1,3})(?!\d)', r'\1,\2', speech)  # Dezimalpunkt (z. B. 2.4 -> 2,4)
     
     speech = re.sub(r'[^A-Za-z0-9çÇáàâãäéèêíïóôõöúüñÁÀÂÃÄÉÈÊÍÏÓÔÕÖÚÜÑ\sß.,!?°]', '', speech)
+
+    if "?" in speech:
+        followup_needed = True
+    else:
+        followup_needed = False
     return speech
 
 # Carrega o template do APL da tela inicial
@@ -326,7 +346,7 @@ class HelpIntentHandler(AbstractRequestHandler):
 
 class CancelOrStopIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
-        return ask_utils.is_intent_name("AMAZON.CancelIntent")(handler_input) or ask_utils.is_intent_name("AMAZON.StopIntent")(handler_input)
+        return ask_utils.is_intent_name("AMAZON.CancelIntent")(handler_input) or ask_utils.is_intent_name("AMAZON.StopIntent")(handler_input) or ask_utils.is_intent_name("CloseSkillIntent")(handler_input)
 
     def handle(self, handler_input):
         speak_output = random.choice(globals().get("alexa_speak_exit").split(";"))
